@@ -1,5 +1,14 @@
 import {
+	compose,
+	values,
+	pipe,
+	sortBy,
+	pluck,
+	fromPairs,
+	uniq,
+	countBy,
 	chain,
+	unnest,
 	groupBy,
 	toPairs,
 	sort,
@@ -45,19 +54,39 @@ import { collectNodeMissing } from './evaluation'
 	missingVariables: {variable: [objectives]}
  */
 
-export let collectMissingVariables = targets => {
-	let missing = chain(collectNodeMissing, targets)
-	return groupBy(identity, missing)
+let describeTargetMissingVariables = target => {
+	let targetMissingVariables = collectNodeMissing(target),
+		countByVariable = countBy(identity, targetMissingVariables)
+	return {
+		missingVariables: uniq(targetMissingVariables),
+		countByVariable
+	}
 }
 
-export let getNextSteps = (situationGate, analysis) => {
-	let impact = ([, objectives]) => length(objectives)
-
-	let missingVariables = collectMissingVariables(analysis.targets),
-		pairs = toPairs(missingVariables),
-		sortedPairs = sort(descend(impact), pairs)
-	return map(head, sortedPairs)
+export let collectMissingVariablesByTarget = targets => {
+	let missing = targets.map(target => [
+		target.dottedName,
+		describeTargetMissingVariables(target)
+	])
+	return fromPairs(missing)
 }
+
+export let getNextSteps = missingVariablesByTarget => {
+	let sortByCount = pipe(
+		groupBy(identity),
+		toPairs,
+		sortBy(([, list]) => list.length),
+		map(head)
+	)
+
+	let result = pipe(values, pluck('missingVariables'), unnest, sortByCount)(
+		missingVariablesByTarget
+	)
+	return result
+}
+
+export let collectMissingVariables = targets =>
+	getNextSteps(collectMissingVariablesByTarget(targets))
 
 let isVariant = rule => queryRule(rule.raw)('formule . une possibilité')
 
@@ -75,7 +104,7 @@ let buildVariantTree = (allRules, path) => {
 				? {
 						canGiveUp,
 						children: variants.map(v => rec(path + ' . ' + v))
-					}
+				  }
 				: null
 		)
 	}

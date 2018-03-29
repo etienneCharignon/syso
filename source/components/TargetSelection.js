@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import formValueTypes from 'Components/conversation/formValueTypes'
 import { rules, findRuleByName } from 'Engine/rules'
-import { propEq, contains, without, curry, append, ifElse } from 'ramda'
+import { propEq, path, contains, without, curry, append, ifElse } from 'ramda'
 import './TargetSelection.css'
 import BlueButton from './BlueButton'
 import { Field, reduxForm, formValueSelector, change } from 'redux-form'
@@ -23,7 +23,8 @@ import { humanFigure } from '../utils'
 		getTargetValue: dottedName =>
 			formValueSelector('conversation')(state, dottedName),
 		targets: state.analysis ? state.analysis.targets : [],
-		conversationTargetNames: state.conversationTargetNames
+		conversationTargetNames: state.conversationTargetNames,
+		missingVariablesByTarget: state.missingVariablesByTarget
 	}),
 	dispatch => ({
 		setFormValue: (field, name) =>
@@ -94,7 +95,8 @@ export default class TargetSelection extends Component {
 			{
 				conversationTargetNames,
 				textColourOnWhite,
-				setConversationTargets
+				setConversationTargets,
+				missingVariablesByTarget
 			} = this.props,
 			optionIsChecked = s => (conversationTargetNames || []).includes(s.name),
 			visibleCheckbox = s =>
@@ -139,7 +141,16 @@ export default class TargetSelection extends Component {
 								<span className="optionTitle">
 									<Link to={'/règle/' + s.dottedName}>{s.title || s.name}</Link>
 								</span>
-								<p>{s['résumé']}</p>
+								<p>
+									{s['résumé']}
+									{
+										(
+											path([s.dottedName, 'missingVariables'])(
+												missingVariablesByTarget
+											) | []
+										).length
+									}
+								</p>
 							</span>
 							<TargetInputOrValue
 								{...{

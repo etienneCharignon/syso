@@ -4,7 +4,10 @@ import reduceReducers from 'reduce-reducers'
 import { reducer as formReducer, formValueSelector } from 'redux-form'
 
 import { rules, collectDefaults, formatInputs } from 'Engine/rules'
-import { getNextSteps } from 'Engine/generateQuestions'
+import {
+	getNextSteps,
+	collectMissingVariablesByTarget
+} from 'Engine/generateQuestions'
 import computeThemeColours from 'Components/themeColours'
 import { STEP_ACTION, EXPLAIN_VARIABLE, CHANGE_THEME_COLOUR } from './actions'
 
@@ -63,7 +66,10 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 			state.parsedRules,
 			conversationTargetNames
 		)(intermediateSituation(state)),
-		nextSteps = getNextSteps(intermediateSituation(state), nextStepsAnalysis)
+		missingVariablesByTarget = collectMissingVariablesByTarget(
+			nextStepsAnalysis.targets
+		),
+		nextSteps = getNextSteps(missingVariablesByTarget)
 
 	let newState = {
 		...state,
@@ -72,6 +78,7 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 		situationGate: situationWithDefaults(state),
 		explainedVariable: null,
 		nextSteps,
+		missingVariablesByTarget,
 		currentQuestion: head(nextSteps),
 		foldedSteps:
 			action.type === 'SET_CONVERSATION_TARGETS' && action.reset
@@ -154,6 +161,7 @@ export default reduceReducers(
 		foldedSteps: (steps = []) => steps,
 		currentQuestion: (state = null) => state,
 		nextSteps: (state = []) => state,
+		missingVariablesByTarget: (state = {}) => state,
 
 		parsedRules: (state = null) => state,
 		analysis: (state = null) => state,
