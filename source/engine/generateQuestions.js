@@ -1,5 +1,7 @@
 import {
-	compose,
+	reduce,
+	mergeWith,
+	add,
 	values,
 	pipe,
 	sortBy,
@@ -7,20 +9,13 @@ import {
 	fromPairs,
 	uniq,
 	countBy,
-	chain,
-	unnest,
-	groupBy,
 	toPairs,
-	sort,
 	map,
-	length,
-	descend,
 	head,
 	unless,
 	is,
 	prop,
 	pick,
-	path,
 	reject,
 	identity
 } from 'ramda'
@@ -71,17 +66,16 @@ export let collectMissingVariablesByTarget = targets => {
 	return fromPairs(missing)
 }
 
-export let getNextSteps = missingVariablesByTarget => {
-	let sortByCount = pipe(
-		groupBy(identity),
-		toPairs,
-		sortBy(([, list]) => list.length),
-		map(head)
-	)
+export let sortKeysByValue = pipe(toPairs, sortBy(([, v]) => -v), map(head))
 
-	let result = pipe(values, pluck('missingVariables'), unnest, sortByCount)(
-		missingVariablesByTarget
-	)
+export let getNextSteps = missingVariablesByTarget => {
+	let result = pipe(
+		values,
+		pluck('countByVariable'),
+		reduce(mergeWith(add), {}),
+		sortKeysByValue
+	)(missingVariablesByTarget)
+
 	return result
 }
 
