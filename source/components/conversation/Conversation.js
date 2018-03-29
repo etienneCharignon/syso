@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { isEmpty, map } from 'ramda'
+import { isEmpty, map, pick } from 'ramda'
 import Aide from '../Aide'
 import { reduxForm, reset } from 'redux-form'
 import { getInputComponent } from 'Engine/generateQuestions'
@@ -12,18 +12,18 @@ import './conversation.css'
 	destroyOnUnmount: false
 })
 @connect(
-	state => ({
-		currentQuestion: state.currentQuestion,
-		foldedSteps: state.foldedSteps,
-		themeColours: state.themeColours,
-		situationGate: state.situationGate,
-		targetNames: state.targetNames,
-		done: state.done,
-		nextSteps: state.nextSteps,
-		analysis: state.analysis,
-		parsedRules: state.parsedRules,
-		conversationTargetNames: state.conversationTargetNames
-	}),
+	pick([
+		'currentQuestion',
+		'foldedSteps',
+		'themeColours',
+		'situationGate',
+		'targetNames',
+		'done',
+		'nextSteps',
+		'analysis',
+		'parsedRules',
+		'conversationStarted'
+	]),
 	dispatch => ({
 		reinitialise: () => {
 			ReactPiwik.push(['trackEvent', 'restart', ''])
@@ -41,9 +41,9 @@ export default class Conversation extends Component {
 			targetNames,
 			reinitialise,
 			textColourOnWhite,
-			conversationTargetNames
+			conversationStarted
 		} = this.props
-		if ((conversationTargetNames || []).length === 0) return null
+		if (!conversationStarted) return null
 		return (
 			<>
 				<div id="currentQuestion">

@@ -32,18 +32,16 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 	if (!state.parsedRules) state.parsedRules = parseAll(flatRules)
 
 	if (
-		!['SET_CONVERSATION_TARGETS', STEP_ACTION, 'USER_INPUT_UPDATE'].includes(
-			action.type
-		)
+		![
+			'SET_CONVERSATION_TARGETS',
+			STEP_ACTION,
+			'USER_INPUT_UPDATE',
+			'START_CONVERSATION'
+		].includes(action.type)
 	)
 		return state
 
 	if (path(['form', 'conversation', 'syncErrors'], state)) return state
-
-	let conversationTargetNames =
-		action.type == 'SET_CONVERSATION_TARGETS' && action.targetNames
-			? action.targetNames
-			: state.conversationTargetNames
 
 	let sim = {},
 		// Hard assumptions cannot be changed, they are used to specialise a simulator
@@ -62,10 +60,9 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 		return { ...state, analysis, situationGate: situationWithDefaults(state) }
 	}
 
-	let nextStepsAnalysis = analyseMany(
-			state.parsedRules,
-			conversationTargetNames
-		)(intermediateSituation(state)),
+	let nextStepsAnalysis = analyseMany(state.parsedRules, state.targetNames)(
+			intermediateSituation(state)
+		),
 		missingVariablesByTarget = collectMissingVariablesByTarget(
 			nextStepsAnalysis.targets
 		),
@@ -73,7 +70,6 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 
 	let newState = {
 		...state,
-		conversationTargetNames,
 		analysis,
 		situationGate: situationWithDefaults(state),
 		explainedVariable: null,
@@ -86,7 +82,7 @@ export let reduceSteps = (tracker, flatRules, answerSource) => (
 				: state.foldedSteps
 	}
 
-	if (action.type == 'SET_CONVERSATION_TARGETS') return newState
+	if (action.type == 'START_CONVERSATION') return newState
 
 	if (action.type == STEP_ACTION && action.name == 'fold') {
 		tracker.push([
@@ -150,6 +146,15 @@ function currentExample(state = null, { type, situation, name }) {
 	}
 }
 
+function conversationStarted(state = false, { type }) {
+	switch (type) {
+		case 'START_CONVERSATION':
+			return true
+		default:
+			return state
+	}
+}
+
 export default reduceReducers(
 	combineReducers({
 		sessionId: (id = Math.floor(Math.random() * 1000000000000) + '') => id,
@@ -167,7 +172,6 @@ export default reduceReducers(
 		analysis: (state = null) => state,
 
 		targetNames: (state = popularTargetNames) => state,
-		conversationTargetNames: (state = null) => state,
 
 		situationGate: (state = name => null) => state,
 
@@ -177,7 +181,8 @@ export default reduceReducers(
 
 		explainedVariable,
 
-		currentExample
+		currentExample,
+		conversationStarted
 	}),
 	// cross-cutting concerns because here `state` is the whole state tree
 	reduceSteps(ReactPiwik, rules, formatInputs(rules, formValueSelector))
